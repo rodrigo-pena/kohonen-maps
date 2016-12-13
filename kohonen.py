@@ -139,10 +139,11 @@ def gauss(x, p):
     """
     return np.exp((-(x - p[0])**2) / (2 * p[1]**2))
 
+
 def neighborhood_decrease_rate(sigma_ini, sigma_fin, nit, maxit):
     r"""
     Function for decreasing the neighborhood width at each iteration.
-    
+
     Parameters
     ----------
     sigma_ini: float
@@ -153,14 +154,15 @@ def neighborhood_decrease_rate(sigma_ini, sigma_fin, nit, maxit):
         Current iteration number
     maxit : int
         Maximum number of iterations
-        
+
     Returns
     -------
     sigma : float
         Current neighborhood width
-    
+
     """
     return sigma_ini * (sigma_fin / sigma_ini) ** (nit / maxit)
+
 
 def som_step(centers, datapoint, neighbor_matrix, eta, sigma):
     r"""
@@ -182,7 +184,8 @@ def som_step(centers, datapoint, neighbor_matrix, eta, sigma):
     Returns
     -------
     error : array_like
-        Vector of Euclidean distances of each cluster center to the current datapoint
+        Vector of Euclidean distances of each cluster center to the current
+        datapoint
 
     Notes
     -----
@@ -211,11 +214,12 @@ def som_step(centers, datapoint, neighbor_matrix, eta, sigma):
 
         # update weights
         centers[j, :] += disc * eta * (datapoint - centers[j, :])
-        
+
     return error
 
 
-def kohonen(data, size_k=6, sigma=2.0, eta=0.9, maxit=5000, tol=0, verbose=0, sigma_fun=None):
+def kohonen(data, size_k=6, sigma=2.0, eta=0.9, maxit=5000, tol=0, verbose=0,
+            sigma_fun=None):
     r"""
     Compute a self-organizing map (SOM) fitting the input data.
 
@@ -231,13 +235,15 @@ def kohonen(data, size_k=6, sigma=2.0, eta=0.9, maxit=5000, tol=0, verbose=0, si
     maxit : int
         Maximum number of iterations.
     tol : float
-        Tolerance on the average (normalized) distance between successive center matrices.
+        Tolerance on the average (normalized) distance between successive
+        center matrices.
     verbose : int
         Level of verbose of output.
     sigma_fun : callable
-        (Optional) Function that modifies the neighborhood width at each iteration. 
-        Syntax: sigma_fun(sigma_ini, sigma_fin, nit, maxit), 
-        where sigma_ini is the initial width, sigma_fin is the final widht, 
+        (Optional) Function that modifies the neighborhood width at each
+        iteration.
+        Syntax: sigma_fun(sigma_ini, sigma_fin, nit, maxit),
+        where sigma_ini is the initial width, sigma_fin is the final widht,
         and nit is the current iteration number.
 
     Returns
@@ -271,22 +277,24 @@ def kohonen(data, size_k=6, sigma=2.0, eta=0.9, maxit=5000, tol=0, verbose=0, si
     for i in order:
         if sigma_fun is not None:
             sigma = sigma_fun(sigma_ini, sigma_fin, nit, maxit)
-            
+
         som_step(centers, data[i, :], neighbor_matrix, eta, sigma)
-        
+
         nit += 1
-        
-        dist = np.sum((centers - centers_old) ** 2, axis=1) / np.sum(centers_old ** 2, axis=1)
+
+        dist = np.sum((centers - centers_old) ** 2, axis=1) / \
+            np.sum(centers_old ** 2, axis=1)
         avg_dist = np.mean(dist)
         if avg_dist <= tol:
             break
-            
+
         centers_old[:] = centers
-    
+
     if verbose > 0:
         print('Number of iterations:', nit)
-        print('Average (normalized) distance between successive center coordinates:', avg_dist)
-        
+        print('Avg. (normalized) dist. between successive center coordinates:',
+              avg_dist)
+
     return centers
 
 
@@ -318,21 +326,21 @@ def visualize_map(centers, data=None, labels=None):
     dim = int(np.sqrt(centers.shape[1]))
 
     plb.close('all')
-    
-    plb.figure(figsize=(16,16))
-    
+
+    plb.figure(figsize=(16, 16))
+
     for i in range(centers.shape[0]):
-        
+
         plb.subplot(size_k, size_k, i + 1)
 
         plb.imshow(np.reshape(centers[i, :], [dim, dim]),
                    interpolation='bilinear')
-        
+
         if (data is not None) and (labels is not None):
-            dist = np.sum((centers[i,:] - data) ** 2, axis=1)
+            dist = np.sum((centers[i, :] - data) ** 2, axis=1)
             row_match = np.argmin(dist)
             plb.title(labels[row_match])
-        
+
         plb.axis('off')
 
     plb.show()
@@ -346,15 +354,20 @@ if __name__ == "__main__":
 
     data_path = 'data/data.txt'
     label_path = 'data/labels.txt'
+    hash_path = 'data/hash.mat'
     name = 'Rodrigo Pena'
-    size_k = 6
-    sigma = 2.0
-    eta = 0.9
+
+    data, digits, labels = preprocess_mnist(data_path, label_path, hash_path,
+                                            name)
+    print('Pseudo-randomly selected digits:', digits)
+
+    size_k = 7
+    sigma = 5
+    eta = 0.05
     maxit = 5000
+    tol = 1e-5
 
-    data, _ = preprocess_mnist(data_path=data_path, label_path=label_path,
-                               name=name)
+    centers = kohonen(data, size_k, sigma, eta, maxit, tol, verbose=1,
+                      sigma_fun=neighborhood_decrease_rate)
 
-    centers = kohonen(data, size_k=size_k, sigma=sigma, eta=eta, maxit=maxit)
-
-    visualize_map(centers)
+    visualize_map(centers, data, labels)
