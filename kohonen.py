@@ -266,6 +266,7 @@ def kohonen(data, size_k=6, sigma=2.0, eta=0.9, maxit=5000, tol=0, verbose=0,
     neighbor_matrix = np.arange(n_centers).reshape((size_k, size_k))
     sigma_ini = sigma
     sigma_fin = 0.01
+    avg_dist = np.zeros((maxit,))
 
     # Set the random order in which the datapoints should be presented
     order = np.arange(maxit) % n_samples
@@ -284,8 +285,11 @@ def kohonen(data, size_k=6, sigma=2.0, eta=0.9, maxit=5000, tol=0, verbose=0,
 
         dist = np.sum((centers - centers_old) ** 2, axis=1) / \
             np.sum(centers_old ** 2, axis=1)
-        avg_dist = np.mean(dist)
-        if avg_dist <= tol:
+
+        avg_dist[nit - 1] = np.mean(dist)
+        if avg_dist[nit - 1] <= tol:
+            avg_dist = avg_dist[:(nit - 1)]
+            print("Tolerance break, i = {}".format(nit - 1))
             break
 
         centers_old[:] = centers
@@ -293,7 +297,12 @@ def kohonen(data, size_k=6, sigma=2.0, eta=0.9, maxit=5000, tol=0, verbose=0,
     if verbose > 0:
         print('Number of iterations:', nit)
         print('Avg. (normalized) dist. between successive center coordinates:',
-              avg_dist)
+              avg_dist[-1])
+        plb.figure(figsize=(12, 6))
+        plb.plot(list(range(1, len(avg_dist) + 1)), avg_dist)
+        plb.title('Convergence of average distance update')
+        plb.xlabel('Iteration number')
+        plb.show()
 
     return centers
 
@@ -325,9 +334,9 @@ def visualize_map(centers, data=None, labels=None):
     size_k = int(np.sqrt(centers.shape[0]))
     dim = int(np.sqrt(centers.shape[1]))
 
-    plb.close('all')
+    # plb.close('all')
 
-    plb.figure(figsize=(16, 16))
+    plb.figure(figsize=(12, 12))
 
     for i in range(centers.shape[0]):
 
@@ -365,7 +374,7 @@ if __name__ == "__main__":
     sigma = 5
     eta = 0.05
     maxit = 5000
-    tol = 1e-5
+    tol = 1e-6
 
     centers = kohonen(data, size_k, sigma, eta, maxit, tol, verbose=1,
                       sigma_fun=neighborhood_decrease_rate)
